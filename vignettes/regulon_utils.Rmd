@@ -1,0 +1,85 @@
+---
+title: "Filtering and extracting information from a regulon"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Filtering and extracting information from a regulon}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+
+library(dplyr)
+library(tibble)
+library(readr)
+```
+
+## Overview
+
+This vignette demonstrates how to post-process a regulon object generated with `corto()`, using two helper functions:
+
+- `filter_regulon()`: to filter interactions based on transcription factors, likelihood, and correlation.
+- `getregulon()`: to convert the filtered regulon into a tidy data frame.
+
+We will use a small precomputed example regulon saved as an `.rds` file in the package.
+
+---
+
+## Load example regulon
+
+```{r load}
+regulon_path <- system.file("extdata", "example_regulon.rds", package = "corto")
+regulon <- readRDS(regulon_path)
+```
+
+---
+
+## Filter regulon by likelihood and correlation
+
+```{r filter}
+filtered <- filter_regulon(
+  regulon = regulon,
+  tf_list = names(regulon),
+  likelihood_threshold = 0.75,
+  correlation_threshold = 0.2
+)
+```
+
+---
+
+## Convert to tibble
+
+```{r tibble}
+regulon_df <- getregulon(
+  regulon = filtered,
+  likelihood_threshold = 0.75
+)
+
+head(regulon_df)
+```
+
+---
+
+## Export to file (optional)
+
+You can also export the result to a TSV file:
+
+```{r export, eval = FALSE}
+getregulon(
+  regulon = filtered,
+  likelihood_threshold = 0.75,
+  export = TRUE,
+  filename = "filtered_regulon.tsv"
+)
+```
+
+---
+
+## Summary
+
+With these tools, it becomes easier to analyze and visualize a regulon created with `corto`, especially when focusing on a subset of transcription factors or robust interactions.
+
