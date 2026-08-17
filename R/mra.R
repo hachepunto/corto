@@ -63,7 +63,37 @@ mra<-function(expmat1,expmat2=NULL,regulon,minsize=10,nperm=NULL,nthreads=2,verb
 
     # Case 0: expmat1 is a signature
     if(is.vector(expmat1)){
-        stop("Input data is provided as vector, Calculating Signature Master Regulator Analysis")
+        sig<-expmat1
+        common<-intersect(names(sig),colnames(netmat))
+        sig<-sig[common]
+        netmat<-netmat[,common]
+        netmat<-apply(netmat,2,function(x){x/(sum(x!=0)^0.5)})
+        scores<-(netmat%*%sig)[,1]
+
+        nullsigperm0<-function(seed=0,sig,netmat){
+            set.seed(seed)
+            nullsig<-setNames(sample(sig),names(sig))
+            nullsig<-nullsig[colnames(netmat)]
+            nullscores<-(netmat%*%nullsig)[,1]
+            return(nullscores)
+        }
+        cl<-parallel::makeCluster(nthreads)
+        nullscores<-pbapply::pbsapply(cl=cl,X=1:nperm,FUN=nullsigperm0,sig=sig,netmat=netmat)
+        parallel::stopCluster(cl)
+
+        nes<-apply(cbind(scores,nullscores),1,function(x){
+            myscore<-x[1]
+            morescores<-x[2:length(x)]
+            mu<-mean(morescores)
+            sigma<-sd(morescores)
+            p<-pnorm(abs(myscore),mean=mu,sd=sigma,lower.tail=FALSE)*2
+            if(p==0){p<-.Machine$double.xmin}
+            mynes<-p2z(p)*sign(myscore)
+            if(myscore==0){mynes<-0}
+            return(mynes)
+        })
+        outlist<-list(nes=nes,pvalue=z2p(nes),sig=sig,regulon=regulon)
+        return(outlist)
     }
 
 
